@@ -10,10 +10,11 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "isolatedModules": true,
+    "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "noEmit": true,
     "types": ["node", "vite/client"]
   },
-  "include": ["src", "server", "api", "vite.config.ts"]
+  "include": ["src", "server", "shared", "api", "vite.config.ts"]
 }

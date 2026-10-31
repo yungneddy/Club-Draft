@@ -3,6 +3,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
 import { z } from 'zod';
+import { toQuestionDTOs, TRIVIA_INSTRUCTIONS, triviaRequestText, type TriviaQuestionDTO } from '../shared/triviaPrompt.js';
 
 const MODEL = 'claude-opus-5-5';
 
@@ -24,48 +25,7 @@ const GeneratedQuestion = z.object({
 });
 const GeneratedBatch = z.object({ questions: z.array(GeneratedQuestion) });
 
-/** What the browser receives. */
-export interface TriviaQuestionDTO {
-  question: string;
-  answer: string;
-  hint: string;
-  wrongOptions: string[];
-  funFact: string;
-}
-
 export type TriviaErrorCode = 'not_configured' | 'unauthorized' | 'bad_request' | 'refused' | 'failed';
-
-const SYSTEM_PROMPT = `You write questions for Troops Trivia, a trivia game friends play in person on one phone. The player answers out loud and the group taps Correct or Wrong, so every question needs one clear answer a friend can judge instantly.
-
-Rules for every question:
-- The answer is short: a name, number, place or a few words.
-- Only use facts you are certain of and that will not change. Skip "current" holders, recent records, and anything near or after your knowledge cutoff.
-- The question must work without options, because it is often asked open-ended. Never write "Which of the following".
-- hint: narrows it down without giving the answer away. Avoid the first letter unless nothing better exists.
-- wrong_options: exactly 3 plausible but definitely wrong answers in the same style as the answer, used in multiple-choice mode.
-- fun_fact: one short sentence of extra context, shown after the answer.
-- Cover different sub-topics and question styles, and give no two questions the same answer.
-- Keep it fun and party-friendly. Questions about public figures are fine; nothing about private individuals.
-
-Difficulty guide: easy = most people in a pub would know it; medium = a fan of the topic would know it; hard = deep cuts for real enthusiasts; mixed = roughly a third of each.`;
-
-function buildPrompt(req: TriviaRequest): string {
-  const lines = [`Write ${req.count} trivia questions.`, ''];
-  lines.push(`Topic: <topic>${req.topic || 'General knowledge: a broad mix of categories'}</topic>`);
-  if (req.interests) {
-    lines.push(
-      `The player's interests: <interests>${req.interests}</interests>`,
-      'Lean the questions towards these interests where they fit the topic. If the topic is general knowledge, base the questions on these interests.',
-    );
-  }
-  lines.push(`Difficulty: ${req.difficulty}`);
-  lines.push('If the topic is vague or playful, interpret it generously.');
-  if (req.exclude.length) {
-    lines.push('', 'These questions were already used this game. Do not repeat or closely paraphrase them:');
-    for (const q of req.exclude) lines.push(`- ${q}`);
-  }
-  return lines.join('\n');
-}
 
 class TriviaError extends Error {
   constructor(
@@ -75,23 +35,6 @@ class TriviaError extends Error {
   ) {
     super(message);
   }
-}
-
-function clean(q: z.infer<typeof GeneratedQuestion>): TriviaQuestionDTO | null {
-  const question = q.question.trim();
-  const answer = q.answer.trim();
-  if (!question || !answer) return null;
-  const seen = new Set([answer.toLowerCase()]);
-  const wrongOptions = q.wrong_options
-    .map((o) => o.trim())
-    .filter((o) => {
-      const key = o.toLowerCase();
-      if (!o || seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    })
-    .slice(0, 3);
-  return { question, answer, hint: q.hint.trim(), wrongOptions, funFact: q.fun_fact.trim() };
 }
 
 export async function generateTrivia(req: TriviaRequest, apiKey: string): Promise<TriviaQuestionDTO[]> {
@@ -105,8 +48,8 @@ export async function generateTrivia(req: TriviaRequest, apiKey: string): Promis
     // If a safety classifier declines (e.g. a chemistry topic), retry on Anthropic's recommended fallback model.
     betas: ['server-side-fallback-2026-07-01'],
     fallbacks: 'default',
-    system: SYSTEM_PROMPT,
-    messages: [{ role: 'user', content: buildPrompt(req) }],
+    system: TRIVIA_INSTRUCTIONS,
+    messages: [{ role: 'user', content: triviaRequestText(req) }],
   });
 
   if (response.stop_reason === 'refusal') {
@@ -114,7 +57,7 @@ export async function generateTrivia(req: TriviaRequest, apiKey: string): Promis
   }
   const batch = response.parsed_output;
   if (!batch) throw new TriviaError('failed', 'The questions came back incomplete. Try again.', 502);
-  return batch.questions.map(clean).filter((q): q is TriviaQuestionDTO => q !== null);
+  return toQuestionDTOs(batch.questions);
 }
 
 function json(body: unknown, status = 200): Response {

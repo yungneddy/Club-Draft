@@ -1,5 +1,4 @@
-@import '@fontsource-variable/inter/wght.css';
-@import '@fontsource-variable/fraunces/wght.css';
+@import './fonts.css';
 
 :root {
   color-scheme: dark;
@@ -47,7 +46,11 @@ body {
   color: var(--text);
 }
 
+/* Set on body as well as :root: a host page (e.g. the Claude artifact frame) may style body's font itself. */
 body {
+  font-family: var(--font-ui);
+  font-size: 1rem;
+  line-height: 1.45;
   min-height: 100dvh;
   background:
     radial-gradient(120% 60% at 50% -20%, rgb(217 181 108 / 0.13), transparent 60%),

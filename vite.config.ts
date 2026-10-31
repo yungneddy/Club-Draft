@@ -1,7 +1,7 @@
 import type { ServerResponse } from 'node:http';
 import react from '@vitejs/plugin-react';
 import { defineConfig, loadEnv, type Connect, type Plugin } from 'vite';
-import { handleTriviaRequest } from './server/trivia';
+import { handleTriviaRequest } from './server/trivia.ts';
 
 /** Serves /api/trivia from `npm run dev` and `npm run preview`, mirroring the Vercel function. */
 function triviaApi(env: NodeJS.ProcessEnv): Plugin {
@@ -25,12 +25,40 @@ function triviaApi(env: NodeJS.ProcessEnv): Plugin {
   };
 }
 
-export default defineConfig(({ mode }) => ({
-  plugins: [react(), triviaApi({ ...process.env, ...loadEnv(mode, process.cwd(), '') })],
-  build: {
-    // Keep each flag as its own file so only the flags you see get downloaded.
-    assetsInlineLimit: (file) => (file.includes('flag-icons') ? false : undefined),
-  },
-  server: { host: true },
-  preview: { host: true },
-}));
+/** The artifact host supplies the document skeleton, so the page keeps only its title, assets and root. */
+function artifactPage(): Plugin {
+  return {
+    name: 'troops-trivia-artifact-page',
+    apply: 'build',
+    transformIndexHtml: {
+      order: 'post',
+      handler: (html) =>
+        html
+          .replace(/<!doctype html>|<\/?html[^>]*>|<\/?head>|<\/?body>/gi, '')
+          .replace(/<meta [^>]*>|<link rel="(icon|manifest|apple-touch-icon)"[^>]*>/gi, '')
+          .replace(/\n\s*\n/g, '\n')
+          .trim() + '\n',
+    },
+  };
+}
+
+// `--mode artifact` builds for publishing as a Claude artifact: relative paths, fonts embedded
+// (the host only loads fonts from Google Fonts or data: URIs) and the page reduced by artifactPage().
+export default defineConfig(({ mode }) => {
+  const artifact = mode === 'artifact';
+  return {
+    base: artifact ? './' : '/',
+    plugins: [react(), triviaApi({ ...process.env, ...loadEnv(mode, process.cwd(), '') }), artifact && artifactPage()],
+    build: {
+      outDir: artifact ? 'dist-artifact' : 'dist',
+      // Keep each flag as its own file so only the flags you see get downloaded.
+      assetsInlineLimit: (file) => {
+        if (file.includes('flag-icons')) return false;
+        if (artifact && file.endsWith('.woff2')) return true;
+        return undefined;
+      },
+    },
+    server: { host: true },
+    preview: { host: true },
+  };
+});

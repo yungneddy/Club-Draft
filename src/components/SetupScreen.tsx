@@ -391,7 +391,10 @@ function AiStatusLine({ check }: { check: AiCheck }) {
       <p className="status-line good">
         <Sparkles size={16} />
         <span>
-          <strong>Any topic, fresh questions.</strong> A new set is written for every game.
+          <strong>Any topic, fresh questions.</strong>{' '}
+          {check.status.source === 'page'
+            ? 'Claude writes a new set for every game, using your Claude account. It asks permission the first time.'
+            : 'A new set is written for every game.'}
         </span>
       </p>
     );

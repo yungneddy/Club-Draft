@@ -1,3 +1,10 @@
+import {
+  toQuestionDTOs,
+  TRIVIA_INSTRUCTIONS,
+  TRIVIA_JSON_FORMAT,
+  triviaRequestText,
+  type TriviaQuestionDTO,
+} from '../../shared/triviaPrompt';
 import { TRIVIA_BANK, type BankEntry } from '../data/triviaBank';
 import type { Player, Question, TriviaDifficulty, TriviaOptions } from '../types';
 import { geoQuestions } from './countryQuiz';
@@ -95,9 +102,16 @@ export function localQuestions(topic: TriviaTopic, count: number, used: Set<stri
 
 // ---------------------------------------------------------------------------- Claude
 
+/**
+ * Where questions get written: `server` is this app's /api/trivia route (the API key lives there);
+ * `page` is Claude asked from the page itself, when the app runs as a Claude artifact.
+ */
+export type AiSource = 'server' | 'page';
+
 export interface AiStatus {
   configured: boolean;
   accessCodeRequired: boolean;
+  source?: AiSource;
 }
 
 export type TriviaApiErrorCode = 'not_configured' | 'unauthorized' | 'bad_request' | 'refused' | 'failed' | 'network';
@@ -111,23 +125,37 @@ export class TriviaApiError extends Error {
   }
 }
 
-/** `null` when there is no /api/trivia at all (e.g. a static host). */
+// The artifact runtime's `sample` capability (see the claude.ai artifact docs); typed for what we use.
+interface SampleError {
+  code: string;
+}
+interface PageSample {
+  json<T>(input: string, options?: { signal?: AbortSignal; modelTier?: 'default'; effort?: 'low'; cache?: false }): Promise<T>;
+}
+interface ArtifactRuntime {
+  use(name: 'sample'): Promise<PageSample | null>;
+}
+
+let pageSample: Promise<PageSample | null> | undefined;
+
+/** Claude from inside a Claude artifact viewer; `null` everywhere else (no `window.claude`). */
+function pageClaude(): Promise<PageSample | null> {
+  const runtime = (globalThis as { claude?: ArtifactRuntime }).claude;
+  if (typeof runtime?.use !== 'function') return Promise.resolve(null);
+  pageSample ??= runtime.use('sample').catch(() => null);
+  return pageSample;
+}
+
+/** `null` when neither Claude in the page nor an /api/trivia route is available (e.g. a static host). */
 export async function fetchAiStatus(): Promise<AiStatus | null> {
+  if (await pageClaude()) return { configured: true, accessCodeRequired: false, source: 'page' };
   try {
     const res = await fetch('/api/trivia');
     if (!res.ok || !res.headers.get('content-type')?.includes('json')) return null;
-    return (await res.json()) as AiStatus;
+    return { ...((await res.json()) as AiStatus), source: 'server' };
   } catch {
     return null;
   }
-}
-
-interface QuestionDTO {
-  question: string;
-  answer: string;
-  hint: string;
-  wrongOptions: string[];
-  funFact: string;
 }
 
 export interface TriviaRequest extends TriviaTopic {
@@ -137,7 +165,47 @@ export interface TriviaRequest extends TriviaTopic {
   accessCode?: string;
 }
 
+function toQuestions(dtos: TriviaQuestionDTO[], rand: Rand): Question[] {
+  return dtos.map((q) => ({
+    id: uid(),
+    prompt: q.question,
+    answer: q.answer,
+    hint: q.hint,
+    funFact: q.funFact || undefined,
+    // Without three wrong answers there's no fair multiple choice; the game falls back to reveal for that question.
+    options: q.wrongOptions.length >= 3 ? shuffle([q.answer, ...q.wrongOptions], rand).map((label) => ({ label })) : undefined,
+  }));
+}
+
+const PAGE_ERRORS: Record<string, [TriviaApiErrorCode, string]> = {
+  not_granted: ['not_configured', "Claude wasn't allowed to write questions here. You can still play the house questions."],
+  sampling_disabled: ['not_configured', "Claude isn't available on this account. You can still play the house questions."],
+  refused: ['refused', "Questions can't be written on that topic. Try a different one."],
+  rate_limited: ['failed', "You've reached your Claude usage limit for now. Try again later, or play the house questions."],
+  session_expired: ['failed', 'Sign in to Claude again, then try again.'],
+};
+
+async function pageTrivia(sample: PageSample, req: TriviaRequest, signal?: AbortSignal): Promise<TriviaQuestionDTO[]> {
+  const prompt = [TRIVIA_INSTRUCTIONS, triviaRequestText(req), TRIVIA_JSON_FORMAT].join('\n\n');
+  try {
+    // No caching: a rematch on the same topic must get new questions.
+    const reply = await sample.json<{ questions?: unknown }>(prompt, { signal, modelTier: 'default', effort: 'low', cache: false });
+    const questions = toQuestionDTOs(reply?.questions);
+    if (!questions.length) throw new TriviaApiError('failed', 'The questions came back incomplete. Try again.');
+    return questions;
+  } catch (error) {
+    if (error instanceof TriviaApiError) throw error;
+    const code = (error as SampleError | null)?.code ?? '';
+    if (code === 'cancelled') throw new DOMException('Cancelled', 'AbortError');
+    const [ours, message] = PAGE_ERRORS[code] ?? ['failed', 'The questions came back incomplete. Try again.'];
+    throw new TriviaApiError(ours, message);
+  }
+}
+
 export async function fetchTrivia(req: TriviaRequest, signal?: AbortSignal, rand: Rand = Math.random): Promise<Question[]> {
+  const sample = await pageClaude();
+  if (sample) return toQuestions(await pageTrivia(sample, req, signal), rand);
+
   const { accessCode, ...body } = req;
   let res: Response;
   try {
@@ -149,23 +217,15 @@ export async function fetchTrivia(req: TriviaRequest, signal?: AbortSignal, rand
     });
   } catch (error) {
     if (signal?.aborted) throw error;
-    throw new TriviaApiError('network', "You seem to be offline. Check your connection and try again.");
+    throw new TriviaApiError('network', 'You seem to be offline. Check your connection and try again.');
   }
   const data = (await res.json().catch(() => null)) as
-    | { questions: QuestionDTO[] }
+    | { questions: TriviaQuestionDTO[] }
     | { error: { code: TriviaApiErrorCode; message: string } }
     | null;
   if (!res.ok || !data || 'error' in data) {
     const error = data && 'error' in data ? data.error : null;
     throw new TriviaApiError(error?.code ?? 'failed', error?.message ?? 'Something went wrong. Try again.');
   }
-  return data.questions.map((q) => ({
-    id: uid(),
-    prompt: q.question,
-    answer: q.answer,
-    hint: q.hint,
-    funFact: q.funFact || undefined,
-    // Without three wrong answers there's no fair multiple choice; the game falls back to reveal for that question.
-    options: q.wrongOptions.length >= 3 ? shuffle([q.answer, ...q.wrongOptions], rand).map((label) => ({ label })) : undefined,
-  }));
+  return toQuestions(data.questions, rand);
 }
