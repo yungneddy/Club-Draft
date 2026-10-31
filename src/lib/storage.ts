@@ -1,4 +1,4 @@
-const PREFIX = 'club-draft:';
+const PREFIX = 'troops-trivia:';
 
 // Storage can be unavailable (private browsing, blocked cookies), so every access is guarded.
 export function load<T>(key: string, fallback: T): T {

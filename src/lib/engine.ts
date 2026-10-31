@@ -4,8 +4,11 @@ import { normalize, uid } from './random';
 /** Sips handed out for every third correct answer in a row (drinking mode). */
 export const STREAK_LENGTH = 3;
 export const STREAK_GIVE_SIPS = 2;
+/** Default when a game doesn't set `wrongSips`. */
 export const WRONG_SIPS = 1;
 export const PASS_SIPS = 1;
+/** Sips for the lowest scorer(s) of each round except the last, in multiplayer drinking games. */
+export const ROUND_LOSER_SIPS = 2;
 
 export interface PlayerStats {
   score: number;
@@ -204,6 +207,15 @@ export function standings(state: GameState): Standing[] {
   });
 }
 
+/** Who drinks for the lowest score this round: nobody when solo, sober, or everyone tied. */
+export function roundLosers(state: GameState): Player[] {
+  const { players, settings } = state.setup;
+  if (!settings.drinking || players.length < 2) return [];
+  const low = Math.min(...players.map((p) => state.stats[p.id].roundScore));
+  const losers = players.filter((p) => state.stats[p.id].roundScore === low);
+  return losers.length < players.length ? losers : [];
+}
+
 export function accuracy(stats: PlayerStats): number | null {
   const answered = stats.correct + stats.wrong;
   return answered ? stats.correct / answered : null;
@@ -319,8 +331,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           sipsGiven: s.sipsGiven + (onFire ? STREAK_GIVE_SIPS : 0),
         };
       } else {
-        if (drinking) drinks.push({ kind: 'take', sips: WRONG_SIPS, reason: 'Wrong answer' });
-        change = { wrong: s.wrong + 1, streak: 0, sips: s.sips + (drinking ? WRONG_SIPS : 0) };
+        const sips = drinking ? (state.setup.settings.wrongSips ?? WRONG_SIPS) : 0;
+        if (sips) drinks.push({ kind: 'take', sips, reason: 'Wrong answer' });
+        change = { wrong: s.wrong + 1, streak: 0, sips: s.sips + sips };
       }
       const stats = withStats(state, id, change);
       return {
@@ -351,7 +364,10 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       if (state.phase !== 'feedback') return state;
       const base = { ...state, undo: null };
       if (isLastTurnOfRound(state)) {
-        return { ...base, current: null, phase: state.round >= state.setup.settings.rounds ? 'finished' : 'roundEnd' };
+        if (state.round >= state.setup.settings.rounds) return { ...base, current: null, phase: 'finished' };
+        let stats = base.stats;
+        for (const p of roundLosers(state)) stats = { ...stats, [p.id]: { ...stats[p.id], sips: stats[p.id].sips + ROUND_LOSER_SIPS } };
+        return { ...base, stats, current: null, phase: 'roundEnd' };
       }
       return draw({ ...base, turn: state.turn + 1, phase: 'question' });
     }

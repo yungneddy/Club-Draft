@@ -1,19 +1,16 @@
 import { ChevronRight, Dices } from 'lucide-react';
 import { currentPlayer, type GameState } from '../lib/engine';
-import { GAME_INFO, gameTitle } from '../lib/setup';
-import type { GameKind } from '../types';
+import { GAME_ORDER, gameIdOf, GAMES, gameTitle, type GameId } from '../lib/setup';
 import { Crest, GAME_ICONS, Medallion } from './controls';
 
-const KINDS: GameKind[] = ['trivia', 'flags', 'geography'];
-
-export function Home(props: { saved: GameState | null; onResume: () => void; onDiscard: () => void; onPick: (kind: GameKind) => void }) {
+export function Home(props: { saved: GameState | null; onResume: () => void; onDiscard: () => void; onPick: (game: GameId) => void }) {
   const { saved, onResume, onDiscard, onPick } = props;
   return (
     <div className="screen home">
       <header className="hero">
         <Crest size={68} />
         <div className="eyebrow gold">Est. 2026</div>
-        <h1 className="wordmark">Club Draft</h1>
+        <h1 className="wordmark">Troops Trivia</h1>
         <p className="hero-lede">Party games for the table. One phone, up to ten players.</p>
       </header>
 
@@ -23,7 +20,7 @@ export function Home(props: { saved: GameState | null; onResume: () => void; onD
             <div className="eyebrow gold">Game in progress</div>
             <h2 id="resume-title">{gameTitle(saved.setup)}</h2>
             <p className="muted small">
-              Round {saved.round} of {saved.setup.settings.rounds} · {currentPlayer(saved).name} is up
+              {GAMES[gameIdOf(saved.setup)].title} · Round {saved.round} of {saved.setup.settings.rounds} · {currentPlayer(saved).name} is up
             </p>
           </div>
           <div className="action-row">
@@ -40,11 +37,11 @@ export function Home(props: { saved: GameState | null; onResume: () => void; onD
       <div className="rule eyebrow">The games</div>
 
       <nav className="game-list" aria-label="Games">
-        {KINDS.map((kind) => {
-          const info = GAME_INFO[kind];
+        {GAME_ORDER.map((id) => {
+          const info = GAMES[id];
           return (
-            <button key={kind} type="button" className={`game-tile tile-${kind}`} onClick={() => onPick(kind)}>
-              <Medallion icon={GAME_ICONS[kind]} />
+            <button key={id} type="button" className={`game-tile tile-${id}`} onClick={() => onPick(id)}>
+              <Medallion icon={GAME_ICONS[id]} />
               <span>
                 <span className="tile-title">{info.title}</span>
                 <span className="tile-tagline">{info.tagline}</span>
@@ -57,12 +54,12 @@ export function Home(props: { saved: GameState | null; onResume: () => void; onD
           <Medallion icon={Dices} />
           <span>
             <span className="tile-title">More games</span>
-            <span className="tile-tagline">Drinking games are in the works.</span>
+            <span className="tile-tagline">More drinking games are in the works.</span>
           </span>
         </div>
       </nav>
 
-      <footer className="footer">Drinking rules are optional. Please drink responsibly, and never drink and drive.</footer>
+      <footer className="footer">Drinking games are for adults of legal drinking age. Please drink responsibly, and never drink and drive.</footer>
     </div>
   );
 }

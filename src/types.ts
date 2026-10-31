@@ -68,6 +68,8 @@ export interface GameSettings {
   hintsPerRound: number;
   answerMode: AnswerMode;
   drinking: boolean;
+  /** Drinking games: sips for a wrong answer. */
+  wrongSips: number;
 }
 
 export interface TriviaOptions {

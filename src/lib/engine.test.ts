@@ -8,6 +8,7 @@ import {
   passesLeft,
   questionNumber,
   questionsWanted,
+  roundLosers,
   standings,
   type GameAction,
   type GameState,
@@ -20,6 +21,7 @@ const settings: GameSettings = {
   hintsPerRound: 1,
   answerMode: 'reveal',
   drinking: true,
+  wrongSips: 1,
 };
 
 function questions(n: number, prefix = 'Q'): Question[] {
@@ -109,6 +111,33 @@ describe('scoring and drinking', () => {
       ['p1', 1],
       ['p2', 3],
     ]);
+  });
+});
+
+describe('drinking rules', () => {
+  it('uses the chosen sips per wrong answer', () => {
+    const s = run(game(1, { wrongSips: 3 }), wrong);
+    expect(s.last?.drinks).toEqual([{ kind: 'take', sips: 3, reason: 'Wrong answer' }]);
+    expect(s.stats.p0.sips).toBe(3);
+  });
+
+  it('makes the lowest scorer drink at the end of each round but the last', () => {
+    let s = game(2, { rounds: 2, questionsPerRound: 1 });
+    s = run(s, right, next, wrong, next);
+    expect(s.phase).toBe('roundEnd');
+    expect(roundLosers(s).map((p) => p.id)).toEqual(['p1']);
+    expect(s.stats.p1.sips).toBe(1 + 2);
+    s = run(s, { type: 'nextRound' }, right, next, wrong, next);
+    expect(s.phase).toBe('finished');
+    expect(s.stats.p1.sips).toBe(1 + 2 + 1);
+  });
+
+  it('lets everyone off when the round is a tie, or when sober', () => {
+    const tie = run(game(2, { rounds: 2, questionsPerRound: 1 }), right, next, right, next);
+    expect(roundLosers(tie)).toEqual([]);
+    const sober = run(game(2, { rounds: 2, questionsPerRound: 1, drinking: false }), right, next, wrong, next);
+    expect(roundLosers(sober)).toEqual([]);
+    expect(sober.stats.p1.sips).toBe(0);
   });
 });
 

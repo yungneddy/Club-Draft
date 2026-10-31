@@ -1,4 +1,4 @@
-# Club Draft 🍻
+# Troops Trivia 🍻
 
 Party games for the table: trivia on any topic, flags and geography. One phone, up to ten players.
 
@@ -6,7 +6,8 @@ Party games for the table: trivia on any topic, flags and geography. One phone, 
 
 | Game | What it is |
 | --- | --- |
-| 🧠 **Trivia** | Type any topic ("90s movies", "Premier League", "The Office") and Claude writes the questions. Each player can also add their own interests, and their questions lean that way. |
+| ✨ **Trivia** | Type any topic ("90s movies", "Premier League", "The Office") and Claude writes the questions. Each player can also add their own interests, and their questions lean that way. No drinking. |
+| 🍷 **Drinking Trivia** | The same game played as a drinking game, with the drinking rules always on (see below). |
 | 🚩 **Flags** | Name the flag, or find the right flag in a line-up of four. Filter by region and difficulty. |
 | 🌍 **Geography** | Capitals, capital → country, neighbours, bigger-or-smaller, continents and landlocked countries. |
 
@@ -18,7 +19,10 @@ Every game shares the same rules:
   - *Out loud:* answer aloud, reveal the answer, then tap **Correct** or **Wrong**.
   - *Multiple choice:* pick from four options and the game marks it for you.
 - **Undo:** if someone taps the wrong button, undo the last answer.
-- **Drinking rules (optional):** a wrong answer or a pass costs 1 sip, and every 3 correct in a row lets you hand out 2 sips.
+- **Drinking rules:** always on in Drinking Trivia, never in Trivia, and an optional switch in Flags and Geography.
+  - Wrong answer: 1–3 sips (you choose). Pass: 1 sip.
+  - Three correct in a row: hand out 2 sips.
+  - With 2+ players, the lowest score each round takes 2 sips, and last place buys the next round.
 - Games are saved on the device, so a refresh or a locked phone doesn't lose the scores.
 
 ## Run it locally
@@ -79,4 +83,4 @@ src/data/triviaBank.ts   Built-in trivia questions
 
 Flags are from [flag-icons](https://github.com/lipis/flag-icons). Country data is from [world-countries](https://github.com/mledoze/countries).
 
-Please drink responsibly. Drinking rules are off by default.
+Please drink responsibly. Drinking rules only apply in Drinking Trivia, or when you switch them on in Flags or Geography.

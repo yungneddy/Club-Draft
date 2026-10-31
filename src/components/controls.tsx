@@ -1,10 +1,12 @@
-import { Check, Earth, Flag as FlagIcon, Minus, Plus, Sparkles, type LucideIcon } from 'lucide-react';
+import { Check, Earth, Flag as FlagIcon, Minus, Plus, Sparkles, Wine, type LucideIcon } from 'lucide-react';
 import type { CSSProperties, ReactNode } from 'react';
 import { flagUrl } from '../lib/flags';
-import type { GameKind, Player } from '../types';
+import type { GameId } from '../lib/setup';
+import type { Player } from '../types';
 
-export const GAME_ICONS: Record<GameKind, LucideIcon> = {
+export const GAME_ICONS: Record<GameId, LucideIcon> = {
   trivia: Sparkles,
+  'drinking-trivia': Wine,
   flags: FlagIcon,
   geography: Earth,
 };
@@ -27,7 +29,7 @@ export function Medallion({ icon: Icon, large }: { icon: LucideIcon; large?: boo
   );
 }
 
-/** The Club Draft mark: a coupe glass inside a double ring. */
+/** The Troops Trivia mark: a coupe glass inside a double ring. */
 export function Crest({ size = 64 }: { size?: number }) {
   return (
     <svg className="crest" width={size} height={size} viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>

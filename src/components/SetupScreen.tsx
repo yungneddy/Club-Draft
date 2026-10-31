@@ -1,4 +1,4 @@
-import { ChevronLeft, CircleAlert, KeyRound, ListChecks, Mic, Sparkles, Wine } from 'lucide-react';
+import { ChevronLeft, CircleAlert, Crown, Flame, KeyRound, ListChecks, Mic, SkipForward, Sparkles, TrendingDown, Wine } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { GEO_TYPES } from '../lib/countryQuiz';
 import type { GameState } from '../lib/engine';
@@ -8,9 +8,10 @@ import {
   DEFAULT_SETTINGS,
   DEFAULT_TRIVIA,
   defaultPlayers,
-  GAME_INFO,
+  GAMES,
   startCountryGame,
   startTriviaGame,
+  type GameId,
 } from '../lib/setup';
 import { load, save } from '../lib/storage';
 import { fetchAiStatus, TriviaApiError, type AiStatus } from '../lib/trivia';
@@ -18,7 +19,6 @@ import type {
   CountryDifficulty,
   FlagOptions,
   FlagStyle,
-  GameKind,
   GameSettings,
   GameSetup,
   GeoOptions,
@@ -52,12 +52,18 @@ const LOADING_LINES = ['Checking the facts…', 'Sharpening the hints…', 'Hidi
 
 type AiCheck = { state: 'checking' } | { state: 'done'; status: AiStatus | null };
 
-export function SetupScreen(props: { kind: GameKind; autoStart?: boolean; onBack: () => void; onStart: (game: GameState) => void }) {
-  const { kind, autoStart, onBack, onStart } = props;
-  const info = GAME_INFO[kind];
+export function SetupScreen(props: { game: GameId; autoStart?: boolean; onBack: () => void; onStart: (game: GameState) => void }) {
+  const { game, autoStart, onBack, onStart } = props;
+  const entry = GAMES[game];
+  const kind = entry.kind;
 
   const [players, setPlayers] = useState<Player[]>(() => load('players', defaultPlayers()));
-  const [settings, setSettings] = useState<GameSettings>(() => ({ ...DEFAULT_SETTINGS[kind], ...load(`settings:${kind}`, {}) }));
+  const [settings, setSettings] = useState<GameSettings>(() => ({
+    ...DEFAULT_SETTINGS[game],
+    ...load(`settings:${game}`, {}),
+    // Trivia and Drinking Trivia fix the drinking rules; other games leave it to the players.
+    ...(entry.drinking === undefined ? {} : { drinking: entry.drinking }),
+  }));
   const [trivia, setTrivia] = useState<TriviaOptions>(() => ({ ...DEFAULT_TRIVIA, ...load('options:trivia', {}) }));
   const [flags, setFlags] = useState<FlagOptions>(() => ({ ...DEFAULT_FLAGS, ...load('options:flags', {}) }));
   const [geo, setGeo] = useState<GeoOptions>(() => ({ ...DEFAULT_GEO, ...load('options:geography', {}) }));
@@ -72,8 +78,8 @@ export function SetupScreen(props: { kind: GameKind; autoStart?: boolean; onBack
     save('players', players);
   }, [players]);
   useEffect(() => {
-    save(`settings:${kind}`, settings);
-  }, [kind, settings]);
+    save(`settings:${game}`, settings);
+  }, [game, settings]);
   useEffect(() => {
     save('options:trivia', trivia);
   }, [trivia]);
@@ -144,7 +150,7 @@ export function SetupScreen(props: { kind: GameKind; autoStart?: boolean; onBack
           <ChevronLeft size={22} />
         </button>
         <div className="topbar-title">
-          <h1>{info.title}</h1>
+          <h1>{entry.title}</h1>
         </div>
         <span />
       </header>
@@ -300,14 +306,27 @@ export function SetupScreen(props: { kind: GameKind; autoStart?: boolean; onBack
           onChange={(passesPerRound) => set({ passesPerRound })}
         />
         <Stepper label="Hints per round" value={settings.hintsPerRound} min={0} max={5} onChange={(hintsPerRound) => set({ hintsPerRound })} />
-        <Toggle
-          label="Drinking rules"
-          icon={Wine}
-          checked={settings.drinking}
-          onChange={(drinking) => set({ drinking })}
-          description="Wrong answer or pass: 1 sip. Three in a row: hand out 2."
-        />
+        {entry.drinking === undefined && (
+          <Toggle
+            label="Drinking rules"
+            icon={Wine}
+            checked={settings.drinking}
+            onChange={(drinking) => set({ drinking })}
+            description="Turn this into a drinking game."
+          />
+        )}
+        {entry.drinking === undefined && settings.drinking && (
+          <DrinkingRules settings={settings} multiplayer={players.length > 1} onChange={set} />
+        )}
       </section>
+
+      {entry.drinking && (
+        <section className="card" aria-label="Drinking rules">
+          <div className="eyebrow gold">Drinking rules</div>
+          <DrinkingRules settings={settings} multiplayer={players.length > 1} onChange={set} />
+          <p className="hint-text">For adults of legal drinking age. Water counts as a sip.</p>
+        </section>
+      )}
 
       <div className="sticky-actions">
         <button type="button" className="btn btn-primary btn-lg" onClick={() => void start()} disabled={kind === 'trivia' && ai.state === 'checking'}>
@@ -329,6 +348,39 @@ export function SetupScreen(props: { kind: GameKind; autoStart?: boolean; onBack
         />
       )}
     </div>
+  );
+}
+
+function DrinkingRules(props: { settings: GameSettings; multiplayer: boolean; onChange: (change: Partial<GameSettings>) => void }) {
+  const { settings, multiplayer, onChange } = props;
+  return (
+    <>
+      <Stepper
+        label="Sips per wrong answer"
+        value={settings.wrongSips}
+        min={1}
+        max={3}
+        onChange={(wrongSips) => onChange({ wrongSips })}
+      />
+      <ul className="rules-list">
+        <li>
+          <SkipForward size={16} /> Pass: 1 sip
+        </li>
+        <li>
+          <Flame size={16} /> Three in a row: hand out 2 sips
+        </li>
+        {multiplayer && (
+          <>
+            <li>
+              <TrendingDown size={16} /> Lowest score each round: 2 sips
+            </li>
+            <li>
+              <Crown size={16} /> Last place buys the next round
+            </li>
+          </>
+        )}
+      </ul>
+    </>
   );
 }
 

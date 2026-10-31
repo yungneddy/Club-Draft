@@ -19,7 +19,7 @@ function triviaApi(env: NodeJS.ProcessEnv): Plugin {
     res.end(Buffer.from(await response.arrayBuffer()));
   };
   return {
-    name: 'club-draft-trivia-api',
+    name: 'troops-trivia-api',
     configureServer: (server) => void server.middlewares.use('/api/trivia', middleware),
     configurePreviewServer: (server) => void server.middlewares.use('/api/trivia', middleware),
   };

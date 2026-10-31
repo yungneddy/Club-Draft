@@ -5,9 +5,9 @@ import { SetupScreen } from './components/SetupScreen';
 import { gameReducer, type GameAction, type GameState } from './lib/engine';
 import { load, remove, save } from './lib/storage';
 import { useTriviaFeeder } from './lib/useTriviaFeeder';
-import type { GameKind } from './types';
+import { gameIdOf, type GameId } from './lib/setup';
 
-type Screen = { name: 'home' } | { name: 'setup'; kind: GameKind; autoStart?: boolean } | { name: 'game' };
+type Screen = { name: 'home' } | { name: 'setup'; game: GameId; autoStart?: boolean } | { name: 'game' };
 
 type AppAction = GameAction | { type: 'load'; game: GameState | null };
 
@@ -46,8 +46,8 @@ export default function App() {
   if (screen.name === 'setup') {
     return (
       <SetupScreen
-        key={screen.kind}
-        kind={screen.kind}
+        key={screen.game}
+        game={screen.game}
         autoStart={screen.autoStart}
         onBack={() => setScreen({ name: 'home' })}
         onStart={(next) => {
@@ -59,15 +59,15 @@ export default function App() {
   }
 
   if (playing) {
-    const kind = game.setup.kind;
+    const id = gameIdOf(game.setup);
     return (
       <GameScreen
         state={game}
         dispatch={dispatch}
         notice={notice}
         onQuit={home}
-        onRematch={() => setScreen({ name: 'setup', kind, autoStart: true })}
-        onChangeSetup={() => setScreen({ name: 'setup', kind })}
+        onRematch={() => setScreen({ name: 'setup', game: id, autoStart: true })}
+        onChangeSetup={() => setScreen({ name: 'setup', game: id })}
       />
     );
   }
@@ -77,7 +77,7 @@ export default function App() {
       saved={game}
       onResume={() => setScreen({ name: 'game' })}
       onDiscard={() => dispatch({ type: 'load', game: null })}
-      onPick={(kind) => setScreen({ name: 'setup', kind })}
+      onPick={(id) => setScreen({ name: 'setup', game: id })}
     />
   );
 }

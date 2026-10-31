@@ -35,7 +35,7 @@ export interface TriviaQuestionDTO {
 
 export type TriviaErrorCode = 'not_configured' | 'unauthorized' | 'bad_request' | 'refused' | 'failed';
 
-const SYSTEM_PROMPT = `You write questions for Club Draft, a trivia game friends play in person on one phone. The player answers out loud and the group taps Correct or Wrong, so every question needs one clear answer a friend can judge instantly.
+const SYSTEM_PROMPT = `You write questions for Troops Trivia, a trivia game friends play in person on one phone. The player answers out loud and the group taps Correct or Wrong, so every question needs one clear answer a friend can judge instantly.
 
 Rules for every question:
 - The answer is short: a name, number, place or a few words.

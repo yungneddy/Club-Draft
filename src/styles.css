@@ -613,6 +613,26 @@ svg {
   outline-offset: 3px;
 }
 
+.rules-list {
+  list-style: none;
+  margin: 0;
+  padding: 2px 0 0;
+  display: grid;
+  gap: 10px;
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+
+.rules-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.rules-list svg {
+  color: var(--gold);
+}
+
 .status-line {
   display: flex;
   gap: 10px;
@@ -768,6 +788,10 @@ svg {
 
 .tile-trivia {
   --glow: rgb(217 181 108 / 0.35);
+}
+
+.tile-drinking-trivia {
+  --glow: rgb(239 127 154 / 0.32);
 }
 
 .tile-flags {

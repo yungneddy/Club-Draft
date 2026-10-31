@@ -25,6 +25,8 @@ import {
   nextPlayer,
   passesLeft,
   questionNumber,
+  ROUND_LOSER_SIPS,
+  roundLosers,
   standings,
   type DrinkCall,
   type GameAction,
@@ -34,7 +36,7 @@ import {
 } from '../lib/engine';
 import { preloadFlags } from '../lib/flags';
 import { haptic } from '../lib/haptics';
-import { gameTitle } from '../lib/setup';
+import { gameIdOf, GAMES, gameTitle } from '../lib/setup';
 import type { Question } from '../types';
 import { Avatar, Flag, Medallion, playerStyle } from './controls';
 
@@ -77,7 +79,7 @@ export function GameScreen(props: Props) {
         <div className="topbar-title">
           <h1>{gameTitle(state.setup)}</h1>
           <div className="topbar-sub">
-            Round {state.round} of {settings.rounds}
+            {state.setup.kind === 'trivia' && `${GAMES[gameIdOf(state.setup)].title} · `}Round {state.round} of {settings.rounds}
           </div>
         </div>
         {settings.drinking ? (
@@ -410,6 +412,7 @@ function Feedback({ state, result, dispatch }: { state: GameState; result: TurnR
 function RoundSummary({ state, onNext }: { state: GameState; onNext: () => void }) {
   const rows = standings(state);
   const left = state.setup.settings.rounds - state.round;
+  const losers = roundLosers(state);
   return (
     <div className="summary">
       <div className="card summary-head">
@@ -422,6 +425,15 @@ function RoundSummary({ state, onNext }: { state: GameState; onNext: () => void 
           {plural(left, 'round')} to go. Passes and hints have been refreshed.
         </p>
       </div>
+      {losers.length > 0 && (
+        <div className="drink drink-take">
+          <Wine size={16} />
+          <span>
+            Lowest score this round: <strong>{losers.map((p) => p.name).join(' & ')}</strong> {losers.length === 1 ? 'takes' : 'take'}{' '}
+            {plural(ROUND_LOSER_SIPS, 'sip')}
+          </span>
+        </div>
+      )}
       <ol className="standings">
         {rows.map(({ player, stats, rank }) => (
           <li key={player.id} className={rank === 1 ? 'leader' : ''}>

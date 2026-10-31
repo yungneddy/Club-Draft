@@ -33,10 +33,59 @@ export function defaultPlayers(): Player[] {
   return [newPlayer(0), newPlayer(1)];
 }
 
-export const DEFAULT_SETTINGS: Record<GameKind, GameSettings> = {
-  trivia: { rounds: 3, questionsPerRound: 5, passesPerRound: 2, hintsPerRound: 2, answerMode: 'reveal', drinking: false },
-  flags: { rounds: 3, questionsPerRound: 5, passesPerRound: 2, hintsPerRound: 2, answerMode: 'choice', drinking: false },
-  geography: { rounds: 3, questionsPerRound: 5, passesPerRound: 2, hintsPerRound: 2, answerMode: 'choice', drinking: false },
+/** What appears on the home screen. Trivia comes in a sober and a drinking edition. */
+export type GameId = 'trivia' | 'drinking-trivia' | 'flags' | 'geography';
+
+export interface GameEntry {
+  id: GameId;
+  kind: GameKind;
+  title: string;
+  tagline: string;
+  /** `true`/`false` fixes drinking rules on/off; `undefined` leaves it to the players. */
+  drinking?: boolean;
+}
+
+export const GAMES: Record<GameId, GameEntry> = {
+  trivia: {
+    id: 'trivia',
+    kind: 'trivia',
+    title: 'Trivia',
+    tagline: 'Name any topic. Fresh questions, nothing but bragging rights.',
+    drinking: false,
+  },
+  'drinking-trivia': {
+    id: 'drinking-trivia',
+    kind: 'trivia',
+    title: 'Drinking Trivia',
+    tagline: 'Same questions, higher stakes. Wrong answers cost a sip.',
+    drinking: true,
+  },
+  flags: { id: 'flags', kind: 'flags', title: 'Flags', tagline: '197 flags. Name them, or spot them in a line-up.' },
+  geography: { id: 'geography', kind: 'geography', title: 'Geography', tagline: 'Capitals, borders and bragging rights.' },
+};
+
+export const GAME_ORDER: GameId[] = ['trivia', 'drinking-trivia', 'flags', 'geography'];
+
+export function gameIdOf(setup: GameSetup): GameId {
+  if (setup.kind === 'trivia') return setup.settings.drinking ? 'drinking-trivia' : 'trivia';
+  return setup.kind;
+}
+
+const BASE_SETTINGS: GameSettings = {
+  rounds: 3,
+  questionsPerRound: 5,
+  passesPerRound: 2,
+  hintsPerRound: 2,
+  answerMode: 'reveal',
+  drinking: false,
+  wrongSips: 1,
+};
+
+export const DEFAULT_SETTINGS: Record<GameId, GameSettings> = {
+  trivia: BASE_SETTINGS,
+  'drinking-trivia': { ...BASE_SETTINGS, drinking: true },
+  flags: { ...BASE_SETTINGS, answerMode: 'choice' },
+  geography: { ...BASE_SETTINGS, answerMode: 'choice' },
 };
 
 export const DEFAULT_TRIVIA: TriviaOptions = { topic: '', difficulty: 'mixed' };
@@ -47,20 +96,14 @@ export const DEFAULT_GEO: GeoOptions = {
   types: ['capital', 'capitalOf', 'neighbour', 'bigger', 'continent', 'landlocked'],
 };
 
-export const GAME_INFO: Record<GameKind, { title: string; tagline: string }> = {
-  trivia: { title: 'Trivia', tagline: 'Name any topic. Fresh questions, written for your table.' },
-  flags: { title: 'Flags', tagline: '197 flags. Name them, or spot them in a line-up.' },
-  geography: { title: 'Geography', tagline: 'Capitals, borders and bragging rights.' },
-};
-
 export function gameTitle(setup: GameSetup): string {
   if (setup.kind === 'trivia') return setup.options.topic.trim() || 'General knowledge';
-  return GAME_INFO[setup.kind].title;
+  return GAMES[setup.kind].title;
 }
 
 /** Flags and geography are generated on the device, all at once. */
 export function startCountryGame(setup: Extract<GameSetup, { kind: 'flags' | 'geography' }>): GameState {
-  const pool = { key: 'main', label: GAME_INFO[setup.kind].title, topic: '', playerIds: setup.players.map((p) => p.id), source: 'local' as const };
+  const pool = { key: 'main', label: GAMES[setup.kind].title, topic: '', playerIds: setup.players.map((p) => p.id), source: 'local' as const };
   const shell = createGame(setup, [pool]);
   const count = questionsWanted(shell, 'main');
   const questions =
