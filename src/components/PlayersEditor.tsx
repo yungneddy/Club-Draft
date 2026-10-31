@@ -1,5 +1,7 @@
+import { Plus, X } from 'lucide-react';
 import { MAX_PLAYERS, newPlayer, PLAYER_COLORS } from '../lib/setup';
 import type { Player } from '../types';
+import { Avatar } from './controls';
 
 export function PlayersEditor(props: { players: Player[]; onChange: (players: Player[]) => void; showInterests: boolean }) {
   const { players, onChange, showInterests } = props;
@@ -15,11 +17,9 @@ export function PlayersEditor(props: { players: Player[]; onChange: (players: Pl
   return (
     <div className="players">
       {players.map((p, i) => (
-        <div className="player-row" key={p.id} style={{ '--player': p.color } as React.CSSProperties}>
+        <div className="player-row" key={p.id}>
           <div className="player-main">
-            <span className="player-dot" aria-hidden>
-              {i + 1}
-            </span>
+            <Avatar player={p} />
             <input
               className="input"
               value={p.name}
@@ -30,7 +30,7 @@ export function PlayersEditor(props: { players: Player[]; onChange: (players: Pl
             />
             {players.length > 1 && (
               <button type="button" className="icon-btn" aria-label={`Remove ${p.name}`} onClick={() => onChange(players.filter((x) => x.id !== p.id))}>
-                ✕
+                <X size={18} />
               </button>
             )}
           </div>
@@ -39,7 +39,7 @@ export function PlayersEditor(props: { players: Player[]; onChange: (players: Pl
               className="input input-sub"
               value={p.interests}
               maxLength={200}
-              placeholder="Interests (optional): F1, cooking…"
+              placeholder="Their interests (optional)"
               aria-label={`${p.name}'s interests`}
               onChange={(e) => update(p.id, { interests: e.target.value })}
             />
@@ -48,7 +48,7 @@ export function PlayersEditor(props: { players: Player[]; onChange: (players: Pl
       ))}
       {players.length < MAX_PLAYERS && (
         <button type="button" className="btn btn-ghost" onClick={add}>
-          + Add player
+          <Plus size={18} /> Add player
         </button>
       )}
     </div>

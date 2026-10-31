@@ -1,6 +1,6 @@
 # Club Draft 🍻
 
-Party trivia and in-person drinking games for 1–10 players, played on one phone.
+Party games for the table: trivia on any topic, flags and geography. One phone, up to ten players.
 
 ## Games
 
@@ -13,12 +13,12 @@ Party trivia and in-person drinking games for 1–10 players, played on one phon
 Every game shares the same rules:
 
 - **Rounds:** each player answers a set number of questions per round. With several players, turns alternate question by question.
-- **Pass and hint limits:** each player gets a fixed number of passes and hints per round. They top up at the start of every round. A pass swaps in a new question without using up your turn. You can't pass after revealing the answer.
+- **Pass and hint limits:** each player gets a fixed number of passes and hints per round. They're refreshed at the start of every round. A pass swaps in a new question without using up your turn. You can't pass after revealing the answer. In multiple choice, some hints are a 50:50 that fades out two wrong options.
 - **Answer style:**
-  - *Say it out loud:* answer aloud, reveal the answer, then tap **Correct** or **Wrong**.
+  - *Out loud:* answer aloud, reveal the answer, then tap **Correct** or **Wrong**.
   - *Multiple choice:* pick from four options and the game marks it for you.
 - **Undo:** if someone taps the wrong button, undo the last answer.
-- **Drinking mode (optional):** a wrong answer or a pass costs 1 sip, and every 3 correct in a row lets you hand out 2 sips.
+- **Drinking rules (optional):** a wrong answer or a pass costs 1 sip, and every 3 correct in a row lets you hand out 2 sips.
 - Games are saved on the device, so a refresh or a locked phone doesn't lose the scores.
 
 ## Run it locally
@@ -31,7 +31,7 @@ npm run dev
 
 Open the URL Vite prints. It also prints a network URL that you can open on your phone if it's on the same Wi-Fi.
 
-**Without an API key**, Trivia still works: it uses about 110 built-in questions matched to your topic (movies, music, sport, science, history, food & drink, animals, tech and general knowledge), plus geography questions. Flags and Geography never need a key.
+**Without an API key**, Trivia still works: it uses about 110 built-in "house questions" matched to your topic (movies, music, sport, science, history, food & drink, animals, tech and general knowledge), plus geography questions. Flags and Geography never need a key.
 
 ## Deploy (Vercel)
 
@@ -48,7 +48,11 @@ The API key stays on the server (`api/trivia.ts`). The browser never sees it.
 - `server/trivia.ts` asks Claude (`claude-opus-5-5`, low effort for speed) for questions in a structured JSON format: question, short answer, hint, three wrong options for multiple choice, and a fun fact.
 - The game asks for 8 questions per topic to start, then fetches more in the background while you play. Each request lists the questions already used, so you don't get repeats.
 - Players with the same topic and interests share a question queue, so nobody gets a question someone else already had.
-- If Claude declines a topic, the request is automatically retried on Anthropic's recommended fallback model. If the server can't be reached twice in a row, the game switches to built-in questions and says so.
+- If Claude declines a topic, the request is automatically retried on Anthropic's recommended fallback model. If the server can't be reached twice in a row, the game switches to the house questions and says so.
+
+## Design
+
+Dark "members' club" styling: champagne-gold accents, Fraunces for display type and Inter for UI (both bundled, so they work offline), [Lucide](https://lucide.dev) line icons, and a colour per player shown as an initial avatar. Answering gives a light haptic buzz on Android phones.
 
 ## Project layout
 
@@ -75,4 +79,4 @@ src/data/triviaBank.ts   Built-in trivia questions
 
 Flags are from [flag-icons](https://github.com/lipis/flag-icons). Country data is from [world-countries](https://github.com/mledoze/countries).
 
-Please drink responsibly. Drinking mode is off by default.
+Please drink responsibly. Drinking rules are off by default.

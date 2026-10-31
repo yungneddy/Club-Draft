@@ -110,10 +110,10 @@ export async function generateTrivia(req: TriviaRequest, apiKey: string): Promis
   });
 
   if (response.stop_reason === 'refusal') {
-    throw new TriviaError('refused', "Claude won't write questions on that topic. Try a different one.", 422);
+    throw new TriviaError('refused', "Questions can't be written on that topic. Try a different one.", 422);
   }
   const batch = response.parsed_output;
-  if (!batch) throw new TriviaError('failed', 'Claude returned questions in an unexpected format.', 502);
+  if (!batch) throw new TriviaError('failed', 'The questions came back incomplete. Try again.', 502);
   return batch.questions.map(clean).filter((q): q is TriviaQuestionDTO => q !== null);
 }
 
@@ -139,17 +139,17 @@ export async function handleTriviaRequest(request: Request, env: NodeJS.ProcessE
   if (request.method !== 'POST') return errorResponse('bad_request', 'Use GET or POST.', 405);
 
   if (!apiKey) {
-    return errorResponse('not_configured', 'ANTHROPIC_API_KEY is not set on the server.', 503);
+    return errorResponse('not_configured', "Custom topics aren't set up on this server yet.", 503);
   }
   if (accessCode && request.headers.get('x-access-code') !== accessCode) {
-    return errorResponse('unauthorized', 'Wrong or missing access code.', 401);
+    return errorResponse('unauthorized', "That access code didn't work. Check it with your host.", 401);
   }
 
   let body: TriviaRequest;
   try {
     body = TriviaRequestSchema.parse(await request.json());
   } catch {
-    return errorResponse('bad_request', 'Invalid request body.', 400);
+    return errorResponse('bad_request', "That request wasn't valid. Try again.", 400);
   }
 
   try {
@@ -157,16 +157,17 @@ export async function handleTriviaRequest(request: Request, env: NodeJS.ProcessE
   } catch (error) {
     if (error instanceof TriviaError) return errorResponse(error.code, error.message, error.status);
     if (error instanceof Anthropic.AuthenticationError) {
-      return errorResponse('not_configured', 'The server has an invalid ANTHROPIC_API_KEY.', 503);
+      console.error('ANTHROPIC_API_KEY was rejected');
+      return errorResponse('not_configured', "Custom topics aren't available right now. The server's API key was rejected.", 503);
     }
     if (error instanceof Anthropic.RateLimitError) {
-      return errorResponse('failed', 'Too many requests right now. Try again in a moment.', 429);
+      return errorResponse('failed', "It's busy right now. Try again in a moment.", 429);
     }
     if (error instanceof Anthropic.APIError) {
       console.error('Claude API error', error.status, error.message);
-      return errorResponse('failed', 'The question writer is having trouble. Try again.', 502);
+      return errorResponse('failed', "The questions couldn't be written just now. Try again.", 502);
     }
     console.error('Trivia generation failed', error);
-    return errorResponse('failed', 'Something went wrong writing questions.', 500);
+    return errorResponse('failed', 'Something went wrong. Try again.', 500);
   }
 }

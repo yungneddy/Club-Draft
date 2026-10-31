@@ -104,7 +104,8 @@ function findTheFlag(c: Country, rand: Rand): Question {
     category: 'Find the flag',
     prompt: `Which one is the flag of ${c.name}?`,
     answer: c.name,
-    hint: '50:50 – two wrong flags removed.',
+    // The hint is a 50:50: two decoys fade out, which says it all.
+    hint: '',
     hintRemoves: decoys.slice(0, 2).map((d) => d.name),
     options: shuffle([c, ...decoys], rand).map((d) => ({ label: d.name, flag: d.code })),
     funFact: `It's in ${c.subregion}.`,
@@ -242,7 +243,7 @@ const GEO: Record<GeoQuestionType, GeoMaker> = {
       category: 'Landlocked',
       prompt: 'Which of these countries is landlocked?',
       answer: landlocked.name,
-      hint: '50:50 – two coastal countries removed.',
+      hint: '',
       hintRemoves: coastal.slice(0, 2).map((d) => d.name),
       options: options([landlocked.name, ...coastal.map((d) => d.name)], rand),
       funFact: `${landlocked.name} borders ${landlocked.borders.map((b) => BY_CODE.get(b)?.name).filter(Boolean).join(', ')}.`,

@@ -1,6 +1,8 @@
+import { ChevronRight, Dices } from 'lucide-react';
 import { currentPlayer, type GameState } from '../lib/engine';
 import { GAME_INFO, gameTitle } from '../lib/setup';
 import type { GameKind } from '../types';
+import { Crest, GAME_ICONS, Medallion } from './controls';
 
 const KINDS: GameKind[] = ['trivia', 'flags', 'geography'];
 
@@ -9,25 +11,24 @@ export function Home(props: { saved: GameState | null; onResume: () => void; onD
   return (
     <div className="screen home">
       <header className="hero">
-        <div className="logo" aria-hidden>
-          🍻
-        </div>
-        <h1>Club Draft</h1>
-        <p className="muted">Trivia and party games for 1–10 players, on one phone.</p>
+        <Crest size={68} />
+        <div className="eyebrow gold">Est. 2026</div>
+        <h1 className="wordmark">Club Draft</h1>
+        <p className="hero-lede">Party games for the table. One phone, up to ten players.</p>
       </header>
 
       {saved && saved.phase !== 'finished' && (
-        <section className="card resume">
+        <section className="card resume" aria-labelledby="resume-title">
           <div>
-            <div className="section-title">Game in progress</div>
+            <div className="eyebrow gold">Game in progress</div>
+            <h2 id="resume-title">{gameTitle(saved.setup)}</h2>
             <p className="muted small">
-              {GAME_INFO[saved.setup.kind].emoji} {gameTitle(saved.setup)} · Round {saved.round}/{saved.setup.settings.rounds} ·{' '}
-              {currentPlayer(saved).name} is up
+              Round {saved.round} of {saved.setup.settings.rounds} · {currentPlayer(saved).name} is up
             </p>
           </div>
           <div className="action-row">
             <button type="button" className="btn btn-ghost" onClick={onDiscard}>
-              Discard
+              End game
             </button>
             <button type="button" className="btn btn-primary btn-grow" onClick={onResume}>
               Resume
@@ -36,36 +37,32 @@ export function Home(props: { saved: GameState | null; onResume: () => void; onD
         </section>
       )}
 
+      <div className="rule eyebrow">The games</div>
+
       <nav className="game-list" aria-label="Games">
         {KINDS.map((kind) => {
           const info = GAME_INFO[kind];
           return (
             <button key={kind} type="button" className={`game-tile tile-${kind}`} onClick={() => onPick(kind)}>
-              <span className="tile-emoji" aria-hidden>
-                {info.emoji}
-              </span>
+              <Medallion icon={GAME_ICONS[kind]} />
               <span>
                 <span className="tile-title">{info.title}</span>
                 <span className="tile-tagline">{info.tagline}</span>
               </span>
-              <span className="tile-go" aria-hidden>
-                →
-              </span>
+              <ChevronRight className="tile-go" size={20} aria-hidden />
             </button>
           );
         })}
         <div className="game-tile tile-soon" aria-disabled>
-          <span className="tile-emoji" aria-hidden>
-            🎲
-          </span>
+          <Medallion icon={Dices} />
           <span>
-            <span className="tile-title">More drinking games</span>
-            <span className="tile-tagline">Coming soon.</span>
+            <span className="tile-title">More games</span>
+            <span className="tile-tagline">Drinking games are in the works.</span>
           </span>
         </div>
       </nav>
 
-      <footer className="footer muted small">Drinking mode is optional. Know your limits, and never drink and drive.</footer>
+      <footer className="footer">Drinking rules are optional. Please drink responsibly, and never drink and drive.</footer>
     </div>
   );
 }

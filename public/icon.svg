@@ -1,7 +1,24 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#14111f"/>
-  <path d="M150 150h170v230a40 40 0 0 1-40 40h-90a40 40 0 0 1-40-40z" fill="#ffb703"/>
-  <path d="M320 200h28a42 42 0 0 1 42 42v52a42 42 0 0 1-42 42h-28v-32h24a14 14 0 0 0 14-14v-44a14 14 0 0 0-14-14h-24z" fill="#ffb703"/>
-  <path d="M138 150c0-34 26-56 56-52 14-24 52-30 72-10 26-10 58 8 60 38 8 6 12 14 12 24z" fill="#fff6e0"/>
-  <text x="235" y="345" font-family="Arial Rounded MT Bold, Arial, sans-serif" font-size="150" font-weight="800" fill="#14111f" text-anchor="middle">?</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="30%" r="70%">
+      <stop offset="0" stop-color="#2a2316"/>
+      <stop offset="1" stop-color="#0b0a0f"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f3dda6"/>
+      <stop offset="1" stop-color="#c49a4c"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#glow)"/>
+  <g transform="translate(32 32) scale(0.72) translate(-32 -32)" fill="none" stroke="url(#gold)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="32" cy="32" r="30"/>
+    <circle cx="32" cy="32" r="26.5" stroke-width="0.9" opacity="0.6"/>
+    <path d="M20 22h24c-.6 7-5.6 11-12 11s-11.4-4-12-11z"/>
+    <path d="M32 33v11M25.5 45h13"/>
+    <g fill="#f3dda6" stroke="none">
+      <circle cx="29" cy="27" r="1"/>
+      <circle cx="34.5" cy="25.6" r="0.8"/>
+      <circle cx="37.2" cy="28.4" r="0.7"/>
+    </g>
+  </g>
 </svg>

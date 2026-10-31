@@ -60,7 +60,7 @@ export function useTriviaFeeder(state: GameState | null, dispatch: Dispatch<Game
           failures.current.set(pool, count);
           if (count >= MAX_FAILURES) {
             dispatch({ type: 'setPoolSource', pool, source: 'local' });
-            setNotice("Couldn't reach the question writer, so the rest of this game uses built-in questions.");
+            setNotice('Connection lost. The rest of this game uses the house questions.');
           } else {
             setTimeout(() => setRetryTick((t) => t + 1), RETRY_MS);
           }

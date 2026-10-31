@@ -1,4 +1,22 @@
-import { useEffect, useState, type CSSProperties, type Dispatch } from 'react';
+import {
+  ArrowRight,
+  Check,
+  CircleAlert,
+  Crown,
+  Eye,
+  Flame,
+  Hourglass,
+  House,
+  Lightbulb,
+  Martini,
+  RotateCcw,
+  SkipForward,
+  Trophy,
+  Undo2,
+  Wine,
+  X,
+} from 'lucide-react';
+import { useEffect, useState, type Dispatch, type ReactNode } from 'react';
 import {
   accuracy,
   currentPlayer,
@@ -11,12 +29,14 @@ import {
   type DrinkCall,
   type GameAction,
   type GameState,
+  type PlayerStats,
   type TurnResult,
 } from '../lib/engine';
 import { preloadFlags } from '../lib/flags';
+import { haptic } from '../lib/haptics';
 import { gameTitle } from '../lib/setup';
-import type { Player, Question } from '../types';
-import { Flag } from './controls';
+import type { Question } from '../types';
+import { Avatar, Flag, Medallion, playerStyle } from './controls';
 
 interface Props {
   state: GameState;
@@ -27,11 +47,12 @@ interface Props {
   onChangeSetup: () => void;
 }
 
-const playerStyle = (p: Player) => ({ '--player': p.color }) as CSSProperties;
+const plural = (n: number, word: string, many = `${word}s`) => `${n} ${n === 1 ? word : many}`;
 
 export function GameScreen(props: Props) {
   const { state, dispatch, notice, onQuit, onRematch, onChangeSetup } = props;
   const [confirmQuit, setConfirmQuit] = useState(false);
+  const { settings } = state.setup;
 
   useEffect(() => {
     preloadFlags(Object.values(state.pools).flatMap((pool) => pool.slice(0, 2)));
@@ -48,29 +69,39 @@ export function GameScreen(props: Props) {
         <button
           type="button"
           className="icon-btn"
-          aria-label={state.phase === 'finished' ? 'Home' : 'Quit game'}
+          aria-label={state.phase === 'finished' ? 'Home' : 'End game'}
           onClick={() => (state.phase === 'finished' ? onQuit() : setConfirmQuit(true))}
         >
-          ✕
+          <X size={20} />
         </button>
         <div className="topbar-title">
-          <div className="topbar-game">{gameTitle(state.setup)}</div>
-          <div className="muted small">
-            Round {state.round} of {state.setup.settings.rounds}
-            {state.setup.settings.drinking && ' · 🍺 Drinking mode'}
+          <h1>{gameTitle(state.setup)}</h1>
+          <div className="topbar-sub">
+            Round {state.round} of {settings.rounds}
           </div>
         </div>
-        <span className="topbar-spacer" />
+        {settings.drinking ? (
+          <span className="drink-pill" title="Drinking rules on" aria-label="Drinking rules on">
+            <Wine size={20} strokeWidth={1.75} />
+          </span>
+        ) : (
+          <span />
+        )}
       </header>
 
-      {notice && <div className="notice">{notice}</div>}
+      {notice && (
+        <div className="notice" role="status">
+          <CircleAlert size={16} />
+          <span>{notice}</span>
+        </div>
+      )}
       {body}
 
       {confirmQuit && (
-        <div className="overlay" role="dialog" aria-modal="true">
+        <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="quit-title">
           <div className="overlay-card">
-            <h2>End this game?</h2>
-            <p className="muted">Scores won't be saved.</p>
+            <h2 id="quit-title">End this game?</h2>
+            <p className="muted">The scores for this game will be lost.</p>
             <div className="stack">
               <button type="button" className="btn btn-bad" onClick={onQuit}>
                 End game
@@ -91,6 +122,7 @@ function Scoreboard({ state, active }: { state: GameState; active?: string }) {
     <ol className="scoreboard" aria-label="Scores">
       {state.setup.players.map((p) => (
         <li key={p.id} className={p.id === active ? 'active' : ''} style={playerStyle(p)}>
+          <Avatar player={p} size="sm" />
           <span className="sb-name">{p.name}</span>
           <span className="sb-score">{state.stats[p.id].score}</span>
         </li>
@@ -112,11 +144,22 @@ function Turn({ state, dispatch }: { state: GameState; dispatch: Dispatch<GameAc
       {players.length > 1 && <Scoreboard state={state} active={player.id} />}
 
       <div className="turn-banner" style={playerStyle(player)}>
-        <span className="turn-name">{players.length > 1 ? `${player.name}'s turn` : player.name}</span>
-        <span className="turn-meta">
-          {stats.streak >= 2 && <span className="streak">🔥 {stats.streak}</span>}
-          Q{questionNumber(state)}/{settings.questionsPerRound}
-        </span>
+        <Avatar player={player} size="lg" />
+        <div className="turn-who">
+          <span className="eyebrow">{players.length > 1 ? 'Now playing' : 'Your turn'}</span>
+          <span className="turn-name">{player.name}</span>
+        </div>
+        <div className="turn-meta">
+          {stats.streak >= 2 && (
+            <span className="streak" aria-label={`${stats.streak} in a row`}>
+              <Flame size={14} strokeWidth={2} /> {stats.streak}
+            </span>
+          )}
+          <span className="turn-count" aria-label={`Question ${questionNumber(state)} of ${settings.questionsPerRound}`}>
+            {questionNumber(state)}
+            <span>/{settings.questionsPerRound}</span>
+          </span>
+        </div>
       </div>
 
       {q ? (
@@ -136,15 +179,26 @@ function Turn({ state, dispatch }: { state: GameState; dispatch: Dispatch<GameAc
   );
 }
 
-/** A brief "passed – it was X" note, since passing skips straight to the next question. */
-function usePassToast(state: GameState): string | null {
-  const [toast, setToast] = useState<string | null>(null);
+/** A brief "passed, the answer was X" note, since passing moves straight to a new question. */
+function usePassToast(state: GameState): ReactNode {
+  const [toast, setToast] = useState<ReactNode>(null);
   const { last, seq } = state;
   useEffect(() => {
     if (!last || last.outcome !== 'pass') return;
     const name = state.setup.players.find((p) => p.id === last.playerId)?.name ?? '';
-    const drink = last.drinks.map((d) => ` · 🍺 ${d.sips} sip`).join('');
-    setToast(`${name} passed. It was: ${last.question.answer}${drink}`);
+    const sips = last.drinks.reduce((n, d) => n + d.sips, 0);
+    setToast(
+      <>
+        <span>
+          {name} passed. The answer was <strong>{last.question.answer}</strong>.
+        </span>
+        {sips > 0 && (
+          <span className="toast-chip">
+            <Wine size={13} /> {plural(sips, 'sip')}
+          </span>
+        )}
+      </>,
+    );
     const t = setTimeout(() => setToast(null), 3500);
     return () => clearTimeout(t);
     // Only react to new outcomes, not every state change.
@@ -156,22 +210,20 @@ function Waiting({ state, dispatch }: { state: GameState; dispatch: Dispatch<Gam
   const pool = state.poolInfo[state.poolOf[currentPlayer(state).id]];
   if (pool?.exhausted) {
     return (
-      <div className="card center">
-        <div className="big-emoji" aria-hidden>
-          🫗
-        </div>
-        <h2>Out of questions</h2>
-        <p className="muted">That's every question we had for this topic.</p>
+      <div className="card summary-head">
+        <Medallion icon={Hourglass} large />
+        <h2>That's every question</h2>
+        <p className="muted">You've played every question we have for this topic.</p>
         <button type="button" className="btn btn-primary" onClick={() => dispatch({ type: 'finish' })}>
-          See the results
+          See final results
         </button>
       </div>
     );
   }
   return (
-    <div className="card center">
+    <div className="card summary-head">
       <div className="spinner" aria-hidden />
-      <p className="muted">Writing more questions…</p>
+      <p className="muted">Writing the next questions…</p>
     </div>
   );
 }
@@ -180,22 +232,32 @@ function QuestionCard(props: { state: GameState; question: Question; feedback: T
   const { state, question: q, feedback, dispatch } = props;
   const { settings } = state.setup;
   const choice = settings.answerMode === 'choice' && Boolean(q.options?.length);
-  const showHint = state.hintShown || feedback?.usedHint;
+  const showHint = Boolean(q.hint) && (state.hintShown || feedback?.usedHint);
   const removed = new Set(state.hintShown && !feedback ? q.hintRemoves : []);
   const hints = hintsLeft(state);
   const passes = passesLeft(state);
   const flagOptions = q.options?.some((o) => o.flag);
   const twoColumns = flagOptions || q.options?.every((o) => o.label.length <= 14);
 
+  const answer = (correct: boolean, picked?: string) => {
+    haptic(correct ? 12 : [20, 60, 20]);
+    dispatch({ type: 'answer', correct, picked });
+  };
+
   return (
     <>
       <div className="turn-scroll">
         <article className={`question-card ${feedback ? `is-${feedback.outcome}` : ''}`}>
-          {q.category && <div className="category">{q.category}</div>}
+          {q.category && <div className="eyebrow category">{q.category}</div>}
           {q.flag && <Flag code={q.flag} className="flag-hero" />}
           <h2 className="prompt">{q.prompt}</h2>
 
-          {showHint && <div className="hint">💡 {q.hint}</div>}
+          {showHint && (
+            <div className="hint">
+              <Lightbulb size={16} />
+              <span>{q.hint}</span>
+            </div>
+          )}
 
           {choice && (
             <div className={`options ${flagOptions ? 'options-flags' : ''} ${twoColumns ? 'options-two' : ''}`}>
@@ -213,7 +275,7 @@ function QuestionCard(props: { state: GameState; question: Question; feedback: T
                     className={`option ${cls}`}
                     disabled={Boolean(feedback) || removed.has(o.label)}
                     aria-label={o.flag ? (feedback ? o.label : `Flag option ${i + 1}`) : undefined}
-                    onClick={() => dispatch({ type: 'answer', correct: o.label === q.answer, picked: o.label })}
+                    onClick={() => answer(o.label === q.answer, o.label)}
                   >
                     {o.flag ? (
                       <>
@@ -232,13 +294,13 @@ function QuestionCard(props: { state: GameState; question: Question; feedback: T
           {!choice &&
             (state.revealed || feedback ? (
               <div className="answer">
-                <div className="answer-label">Answer</div>
+                <div className="eyebrow">Answer</div>
                 <div className="answer-text">{q.answer}</div>
                 {q.acceptAlso?.length ? <div className="muted small">Also accept: {q.acceptAlso.join(', ')}</div> : null}
               </div>
             ) : (
               <button type="button" className="reveal" onClick={() => dispatch({ type: 'reveal' })}>
-                👀 Tap to reveal the answer
+                <Eye size={18} /> Reveal answer
               </button>
             ))}
 
@@ -257,19 +319,19 @@ function QuestionCard(props: { state: GameState; question: Question; feedback: T
               disabled={hints <= 0 || state.hintShown || state.revealed}
               onClick={() => dispatch({ type: 'hint' })}
             >
-              💡 Hint <span className="count">{hints}</span>
+              <Lightbulb size={18} /> Hint <span className="count">{hints}</span>
             </button>
             <button type="button" className="btn btn-pass" disabled={passes <= 0 || state.revealed} onClick={() => dispatch({ type: 'pass' })}>
-              ⏭ Pass <span className="count">{passes}</span>
+              <SkipForward size={18} /> Pass <span className="count">{passes}</span>
             </button>
           </div>
           {!choice && (
             <div className="action-row">
-              <button type="button" className="btn btn-bad btn-xl" onClick={() => dispatch({ type: 'answer', correct: false })}>
-                ✗ Wrong
+              <button type="button" className="btn btn-bad btn-xl" onClick={() => answer(false)}>
+                <X size={22} strokeWidth={2.5} /> Wrong
               </button>
-              <button type="button" className="btn btn-good btn-xl" onClick={() => dispatch({ type: 'answer', correct: true })}>
-                ✓ Correct
+              <button type="button" className="btn btn-good btn-xl" onClick={() => answer(true)}>
+                <Check size={22} strokeWidth={2.5} /> Correct
               </button>
             </div>
           )}
@@ -283,13 +345,23 @@ function DrinkCalls({ calls, name }: { calls: DrinkCall[]; name: string }) {
   if (!calls.length) return null;
   return (
     <div className="drinks">
-      {calls.map((d, i) => (
-        <div key={i} className={`drink drink-${d.kind}`}>
-          {d.kind === 'take'
-            ? `🍺 ${name}, take ${d.sips} sip${d.sips === 1 ? '' : 's'}`
-            : `🔥 ${d.reason}! ${name}, hand out ${d.sips} sips`}
-        </div>
-      ))}
+      {calls.map((d, i) =>
+        d.kind === 'take' ? (
+          <div key={i} className="drink drink-take">
+            <Wine size={16} />
+            <span>
+              <strong>{name}</strong> takes {plural(d.sips, 'sip')}
+            </span>
+          </div>
+        ) : (
+          <div key={i} className="drink drink-give">
+            <Flame size={16} />
+            <span>
+              {d.reason}. <strong>{name}</strong> hands out {plural(d.sips, 'sip')}
+            </span>
+          </div>
+        ),
+      )}
     </div>
   );
 }
@@ -302,26 +374,33 @@ function Feedback({ state, result, dispatch }: { state: GameState; result: TurnR
   const solo = state.setup.players.length === 1;
   const next = nextPlayer(state);
 
-  let nextLabel = solo ? 'Next question →' : `Pass to ${next.name} →`;
-  if (lastTurn) nextLabel = finalTurn ? 'See final results →' : 'See round results →';
+  let nextLabel = solo ? 'Next question' : `Next up: ${next.name}`;
+  if (lastTurn) nextLabel = finalTurn ? 'Final results' : 'Round results';
 
   return (
     <div className="feedback">
       <div className={`result ${correct ? 'good' : 'bad'}`} role="status">
-        {correct ? (result.streak >= 3 ? `Correct! 🔥 ${result.streak} in a row` : 'Correct! +1') : 'Wrong!'}
+        <span className="result-icon" aria-hidden>
+          {correct ? <Check size={20} strokeWidth={3} /> : <X size={20} strokeWidth={3} />}
+        </span>
+        <span className="result-text">{correct ? 'Correct' : 'Not quite'}</span>
+        {correct && <span className="result-chip">+1</span>}
       </div>
       <DrinkCalls calls={result.drinks} name={player.name} />
       <div className="action-row">
         <button type="button" className="btn btn-ghost btn-undo" onClick={() => dispatch({ type: 'undo' })}>
-          ↩ Undo
+          <Undo2 size={18} /> Undo
         </button>
         <button
           type="button"
           className={`btn btn-grow ${lastTurn || solo ? 'btn-primary' : 'btn-player'}`}
           style={playerStyle(next)}
-          onClick={() => dispatch({ type: 'next' })}
+          onClick={() => {
+            haptic();
+            dispatch({ type: 'next' });
+          }}
         >
-          {nextLabel}
+          {nextLabel} <ArrowRight size={18} />
         </button>
       </div>
     </div>
@@ -330,34 +409,60 @@ function Feedback({ state, result, dispatch }: { state: GameState; result: TurnR
 
 function RoundSummary({ state, onNext }: { state: GameState; onNext: () => void }) {
   const rows = standings(state);
-  const { settings } = state.setup;
+  const left = state.setup.settings.rounds - state.round;
   return (
     <div className="summary">
-      <div className="card center">
-        <div className="big-emoji" aria-hidden>
-          🍻
+      <div className="card summary-head">
+        <Medallion icon={Martini} large />
+        <div className="eyebrow gold">
+          Round {state.round} of {state.setup.settings.rounds}
         </div>
-        <h2>Round {state.round} done!</h2>
+        <h2>Round complete</h2>
         <p className="muted">
-          {settings.rounds - state.round} round{settings.rounds - state.round === 1 ? '' : 's'} to go. Passes and hints are topped up.
+          {plural(left, 'round')} to go. Passes and hints have been refreshed.
         </p>
       </div>
       <ol className="standings">
         {rows.map(({ player, stats, rank }) => (
-          <li key={player.id} style={playerStyle(player)}>
+          <li key={player.id} className={rank === 1 ? 'leader' : ''}>
             <span className="rank">{rank}</span>
+            <Avatar player={player} />
             <span className="st-name">{player.name}</span>
-            <span className="st-round">+{stats.roundScore}</span>
+            <span className={`st-round ${stats.roundScore ? '' : 'none'}`}>+{stats.roundScore}</span>
             <span className="st-score">{stats.score}</span>
           </li>
         ))}
       </ol>
       <div className="sticky-actions">
         <button type="button" className="btn btn-primary btn-lg" onClick={onNext}>
-          Start round {state.round + 1} →
+          Begin round {state.round + 1} <ArrowRight size={18} />
         </button>
       </div>
     </div>
+  );
+}
+
+function StatLine({ stats, drinking }: { stats: PlayerStats; drinking: boolean }) {
+  const acc = accuracy(stats);
+  const items: ReactNode[] = [
+    <>
+      <b>
+        {stats.correct}/{stats.correct + stats.wrong}
+      </b>{' '}
+      right
+    </>,
+  ];
+  if (acc !== null) items.push(<b>{Math.round(acc * 100)}%</b>);
+  if (stats.bestStreak >= 2) items.push(<>Best streak <b>{stats.bestStreak}</b></>);
+  if (stats.hints) items.push(<><b>{stats.hints}</b> {stats.hints === 1 ? 'hint' : 'hints'}</>);
+  if (stats.passes) items.push(<><b>{stats.passes}</b> {stats.passes === 1 ? 'pass' : 'passes'}</>);
+  if (drinking && stats.sips) items.push(<><b>{stats.sips}</b> {stats.sips === 1 ? 'sip' : 'sips'}</>);
+  return (
+    <span className="st-stats">
+      {items.map((item, i) => (
+        <span key={i}>{item}</span>
+      ))}
+    </span>
   );
 }
 
@@ -370,51 +475,43 @@ function FinalResults(props: { state: GameState; onRematch: () => void; onChange
   const asked = settings.rounds * settings.questionsPerRound;
 
   let headline: string;
-  if (solo) headline = `You scored ${rows[0].stats.score} out of ${asked}`;
-  else if (winners.length === 1) headline = `${winners[0].player.name} wins!`;
-  else headline = `It's a tie between ${winners.map((w) => w.player.name).join(' & ')}!`;
+  if (solo) headline = `${rows[0].stats.score} out of ${asked}`;
+  else if (winners.length === 1) headline = `${winners[0].player.name} wins`;
+  else headline = `A draw: ${winners.map((w) => w.player.name).join(' & ')}`;
 
   return (
     <div className="summary">
-      <div className="card center celebrate">
-        <div className="big-emoji" aria-hidden>
-          🏆
-        </div>
+      <div className="card summary-head celebrate">
+        <Medallion icon={Trophy} large />
+        <div className="eyebrow gold">Final results</div>
         <h2>{headline}</h2>
-        {!solo && settings.drinking && (
-          <p className="muted">{rows[rows.length - 1].player.name} came last, so they're buying the next round. 🍻</p>
+        {!solo && settings.drinking && winners.length < rows.length && (
+          <p className="muted">Last place: {rows[rows.length - 1].player.name}. The next round is on them.</p>
         )}
       </div>
-      <ol className="standings final">
-        {rows.map(({ player, stats, rank }) => {
-          const acc = accuracy(stats);
-          return (
-            <li key={player.id} style={playerStyle(player)}>
-              <span className="rank">{rank === 1 ? '👑' : rank}</span>
-              <div className="st-body">
-                <span className="st-name">{player.name}</span>
-                <span className="st-stats">
-                  {stats.correct} right · {stats.wrong} wrong{acc !== null && ` · ${Math.round(acc * 100)}%`}
-                  {stats.bestStreak >= 2 && ` · best streak ${stats.bestStreak}`}
-                  {` · ${stats.hints} hint${stats.hints === 1 ? '' : 's'} · ${stats.passes} pass${stats.passes === 1 ? '' : 'es'}`}
-                  {settings.drinking && ` · 🍺 ${stats.sips} sip${stats.sips === 1 ? '' : 's'} taken, ${stats.sipsGiven} given`}
-                </span>
-              </div>
-              <span className="st-score">{stats.score}</span>
-            </li>
-          );
-        })}
+      <ol className="standings">
+        {rows.map(({ player, stats, rank }) => (
+          <li key={player.id} className={rank === 1 ? 'leader' : ''}>
+            <span className="rank">{rank === 1 ? <Crown size={18} strokeWidth={1.75} aria-label="Winner" /> : rank}</span>
+            <Avatar player={player} />
+            <div className="st-body">
+              <span className="st-name">{player.name}</span>
+              <StatLine stats={stats} drinking={settings.drinking} />
+            </div>
+            <span className="st-score">{stats.score}</span>
+          </li>
+        ))}
       </ol>
-      <div className="sticky-actions stack">
+      <div className="sticky-actions">
         <button type="button" className="btn btn-primary btn-lg" onClick={onRematch}>
-          Rematch with new questions
+          <RotateCcw size={18} /> Rematch
         </button>
         <div className="action-row">
           <button type="button" className="btn" onClick={onChangeSetup}>
             Change setup
           </button>
           <button type="button" className="btn btn-ghost" onClick={onHome}>
-            Home
+            <House size={18} /> Home
           </button>
         </div>
       </div>

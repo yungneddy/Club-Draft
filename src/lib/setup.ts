@@ -11,17 +11,18 @@ export const FIRST_BATCH = 8;
 /** Questions per background request. */
 export const BATCH = 10;
 
+// Jewel tones: distinct from each other and from the gold accent.
 export const PLAYER_COLORS = [
-  '#ff5d8f',
-  '#4cc9f0',
-  '#ffd166',
-  '#06d6a0',
-  '#b388ff',
-  '#ff9f1c',
-  '#f72585',
-  '#90e0ef',
-  '#c5f277',
-  '#ff6b6b',
+  '#ef7f9a',
+  '#6aa8ff',
+  '#e9b35a',
+  '#4fc79a',
+  '#a98bff',
+  '#ff9466',
+  '#4ccfd8',
+  '#c3d36a',
+  '#f29fd4',
+  '#a7b4c8',
 ];
 
 export function newPlayer(index: number): Player {
@@ -46,10 +47,10 @@ export const DEFAULT_GEO: GeoOptions = {
   types: ['capital', 'capitalOf', 'neighbour', 'bigger', 'continent', 'landlocked'],
 };
 
-export const GAME_INFO: Record<GameKind, { title: string; emoji: string; tagline: string }> = {
-  trivia: { title: 'Trivia', emoji: '🧠', tagline: 'Any topic you like. Claude writes the questions.' },
-  flags: { title: 'Flags', emoji: '🚩', tagline: 'Name the flag, or find it in a line-up.' },
-  geography: { title: 'Geography', emoji: '🌍', tagline: 'Capitals, borders, continents and more.' },
+export const GAME_INFO: Record<GameKind, { title: string; tagline: string }> = {
+  trivia: { title: 'Trivia', tagline: 'Name any topic. Fresh questions, written for your table.' },
+  flags: { title: 'Flags', tagline: '197 flags. Name them, or spot them in a line-up.' },
+  geography: { title: 'Geography', tagline: 'Capitals, borders and bragging rights.' },
 };
 
 export function gameTitle(setup: GameSetup): string {

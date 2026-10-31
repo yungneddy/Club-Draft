@@ -149,7 +149,7 @@ export async function fetchTrivia(req: TriviaRequest, signal?: AbortSignal, rand
     });
   } catch (error) {
     if (signal?.aborted) throw error;
-    throw new TriviaApiError('network', "Couldn't reach the server. Check your connection.");
+    throw new TriviaApiError('network', "You seem to be offline. Check your connection and try again.");
   }
   const data = (await res.json().catch(() => null)) as
     | { questions: QuestionDTO[] }
@@ -157,7 +157,7 @@ export async function fetchTrivia(req: TriviaRequest, signal?: AbortSignal, rand
     | null;
   if (!res.ok || !data || 'error' in data) {
     const error = data && 'error' in data ? data.error : null;
-    throw new TriviaApiError(error?.code ?? 'failed', error?.message ?? `Request failed (${res.status}).`);
+    throw new TriviaApiError(error?.code ?? 'failed', error?.message ?? 'Something went wrong. Try again.');
   }
   return data.questions.map((q) => ({
     id: uid(),

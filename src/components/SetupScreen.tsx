@@ -1,3 +1,4 @@
+import { ChevronLeft, CircleAlert, KeyRound, ListChecks, Mic, Sparkles, Wine } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { GEO_TYPES } from '../lib/countryQuiz';
 import type { GameState } from '../lib/engine';
@@ -26,10 +27,10 @@ import type {
   TriviaDifficulty,
   TriviaOptions,
 } from '../types';
-import { Chips, Segmented, Stepper, Toggle } from './controls';
+import { Chips, Crest, Segmented, Stepper, Toggle } from './controls';
 import { PlayersEditor } from './PlayersEditor';
 
-const TOPIC_IDEAS = ['90s music', 'Premier League', 'The Office', 'Marvel movies', 'Space', 'Cocktails', 'Harry Potter', 'Ancient Rome'];
+const TOPIC_IDEAS = ['90s music', 'Premier League', 'The Office', 'Marvel films', 'Space', 'Cocktails', 'Harry Potter', 'Ancient Rome'];
 
 const REGIONS: { value: Region; label: string }[] = [
   { value: 'world', label: 'World' },
@@ -47,12 +48,7 @@ const COUNTRY_DIFFICULTY: { value: CountryDifficulty; label: string }[] = [
   { value: 'all', label: 'All' },
 ];
 
-const LOADING_LINES = [
-  'Fact-checking with a straight face…',
-  'Hiding the answers from your mates…',
-  'Pouring a fresh round of questions…',
-  'Making the hints just helpful enough…',
-];
+const LOADING_LINES = ['Checking the facts…', 'Sharpening the hints…', 'Hiding the answers…', 'Setting the table…'];
 
 type AiCheck = { state: 'checking' } | { state: 'done'; status: AiStatus | null };
 
@@ -125,7 +121,7 @@ export function SetupScreen(props: { kind: GameKind; autoStart?: boolean; onBack
       onStart(await startTriviaGame(setup, { enabled: useAi, accessCode }, abort.current.signal));
     } catch (e) {
       if (abort.current.signal.aborted) return;
-      setError(e instanceof TriviaApiError ? e : new TriviaApiError('failed', 'Something went wrong.'));
+      setError(e instanceof TriviaApiError ? e : new TriviaApiError('failed', 'Something went wrong. Try again.'));
     } finally {
       setLoading(false);
     }
@@ -145,25 +141,26 @@ export function SetupScreen(props: { kind: GameKind; autoStart?: boolean; onBack
     <div className="screen setup">
       <header className="topbar">
         <button type="button" className="icon-btn" onClick={onBack} aria-label="Back to games">
-          ←
+          <ChevronLeft size={22} />
         </button>
-        <h1>
-          <span aria-hidden>{info.emoji}</span> {info.title}
-        </h1>
-        <span className="topbar-spacer" />
+        <div className="topbar-title">
+          <h1>{info.title}</h1>
+        </div>
+        <span />
       </header>
 
       {kind === 'trivia' && (
-        <section className="card">
-          <label className="field-label" htmlFor="topic">
-            What do you want trivia about?
+        <section className="card" aria-label="Topic">
+          <div className="eyebrow gold">The topic</div>
+          <label className="field-label sr-only" htmlFor="topic">
+            Topic
           </label>
           <input
             id="topic"
             className="input input-lg"
             value={trivia.topic}
             maxLength={200}
-            placeholder="e.g. 90s movies, Premier League, The Office"
+            placeholder="90s films, Formula 1, The Office…"
             onChange={(e) => setTrivia({ ...trivia, topic: e.target.value })}
           />
           <div className="chips">
@@ -173,7 +170,7 @@ export function SetupScreen(props: { kind: GameKind; autoStart?: boolean; onBack
               </button>
             ))}
           </div>
-          <p className="muted small">Leave it blank for general knowledge. Each player can add their own interests below.</p>
+          <p className="hint-text">Leave blank for general knowledge. Players can add their own interests below.</p>
           <Segmented<TriviaDifficulty>
             label="Difficulty"
             value={trivia.difficulty}
@@ -196,7 +193,7 @@ export function SetupScreen(props: { kind: GameKind; autoStart?: boolean; onBack
                 className="input"
                 value={accessCode}
                 autoComplete="off"
-                placeholder="Ask whoever set up this app"
+                placeholder="Ask your host for the code"
                 onChange={(e) => setAccessCode(e.target.value)}
               />
             </div>
@@ -205,7 +202,8 @@ export function SetupScreen(props: { kind: GameKind; autoStart?: boolean; onBack
       )}
 
       {kind === 'flags' && (
-        <section className="card">
+        <section className="card" aria-label="Flags">
+          <div className="eyebrow gold">The flags</div>
           <Segmented<Region> label="Region" value={flags.region} options={REGIONS} onChange={(region) => setFlags({ ...flags, region })} />
           <Segmented<CountryDifficulty>
             label="Difficulty"
@@ -223,12 +221,13 @@ export function SetupScreen(props: { kind: GameKind; autoStart?: boolean; onBack
               { value: 'mix', label: 'Mix', disabled: settings.answerMode === 'reveal' },
             ]}
           />
-          {settings.answerMode === 'reveal' && <p className="muted small">"Find it" needs multiple choice, so say-it-out-loud games only use "Name it".</p>}
+          {settings.answerMode === 'reveal' && <p className="hint-text">“Find it” is available in multiple-choice games.</p>}
         </section>
       )}
 
       {kind === 'geography' && (
-        <section className="card">
+        <section className="card" aria-label="Geography">
+          <div className="eyebrow gold">The map</div>
           <Segmented<Region> label="Region" value={geo.region} options={REGIONS} onChange={(region) => setGeo({ ...geo, region })} />
           <Segmented<CountryDifficulty>
             label="Difficulty"
@@ -245,33 +244,48 @@ export function SetupScreen(props: { kind: GameKind; autoStart?: boolean; onBack
         </section>
       )}
 
-      <section className="card">
-        <div className="section-title">
-          Players <span className="muted">({players.length}/10)</span>
+      <section className="card" aria-label="Players">
+        <div className="card-head">
+          <div className="eyebrow gold">Players</div>
+          <span className="hint-text">{players.length} of 10</span>
         </div>
         <PlayersEditor players={players} onChange={setPlayers} showInterests={kind === 'trivia'} />
       </section>
 
-      <section className="card">
-        <div className="section-title">Rules</div>
+      <section className="card" aria-label="House rules">
+        <div className="eyebrow gold">House rules</div>
         <Segmented
-          label="How do you answer?"
+          label="Answer style"
           value={settings.answerMode}
           onChange={(answerMode) => set({ answerMode })}
           options={[
-            { value: 'reveal', label: '🗣️ Say it out loud' },
-            { value: 'choice', label: '🔘 Multiple choice' },
+            {
+              value: 'reveal',
+              label: (
+                <>
+                  <Mic size={16} /> Out loud
+                </>
+              ),
+            },
+            {
+              value: 'choice',
+              label: (
+                <>
+                  <ListChecks size={16} /> Multiple choice
+                </>
+              ),
+            },
           ]}
         />
-        <p className="muted small">
+        <p className="hint-text">
           {settings.answerMode === 'reveal'
-            ? 'Answer out loud, reveal the answer, then tap Correct or Wrong.'
-            : 'Pick from four options. The game marks it for you.'}
+            ? 'Answer aloud, reveal the answer, then mark it right or wrong.'
+            : 'Choose from four options. Scored automatically.'}
         </p>
         <Stepper label="Rounds" value={settings.rounds} min={1} max={10} onChange={(rounds) => set({ rounds })} />
         <Stepper
           label="Questions per round"
-          hint="For each player"
+          hint="Per player"
           value={settings.questionsPerRound}
           min={1}
           max={10}
@@ -279,7 +293,7 @@ export function SetupScreen(props: { kind: GameKind; autoStart?: boolean; onBack
         />
         <Stepper
           label="Passes per round"
-          hint="Skip a question"
+          hint="Swap a question you can't answer"
           value={settings.passesPerRound}
           min={0}
           max={5}
@@ -287,16 +301,17 @@ export function SetupScreen(props: { kind: GameKind; autoStart?: boolean; onBack
         />
         <Stepper label="Hints per round" value={settings.hintsPerRound} min={0} max={5} onChange={(hintsPerRound) => set({ hintsPerRound })} />
         <Toggle
-          label="🍺 Drinking mode"
+          label="Drinking rules"
+          icon={Wine}
           checked={settings.drinking}
           onChange={(drinking) => set({ drinking })}
-          description="Wrong answer or pass = 1 sip. Three right in a row = hand out 2 sips."
+          description="Wrong answer or pass: 1 sip. Three in a row: hand out 2."
         />
       </section>
 
       <div className="sticky-actions">
         <button type="button" className="btn btn-primary btn-lg" onClick={() => void start()} disabled={kind === 'trivia' && ai.state === 'checking'}>
-          Start · {total} question{total === 1 ? '' : 's'}
+          Start game · {total} question{total === 1 ? '' : 's'}
         </button>
       </div>
 
@@ -318,11 +333,23 @@ export function SetupScreen(props: { kind: GameKind; autoStart?: boolean; onBack
 }
 
 function AiStatusLine({ check }: { check: AiCheck }) {
-  if (check.state === 'checking') return <p className="status-line muted">Checking the question writer…</p>;
-  if (check.status?.configured) return <p className="status-line good">✨ Claude will write fresh questions for every game.</p>;
+  if (check.state === 'checking') return <p className="status-line">Connecting…</p>;
+  if (check.status?.configured) {
+    return (
+      <p className="status-line good">
+        <Sparkles size={16} />
+        <span>
+          <strong>Any topic, fresh questions.</strong> A new set is written for every game.
+        </span>
+      </p>
+    );
+  }
   return (
-    <p className="status-line warn">
-      📦 No Claude API key on this server, so you'll get built-in questions matched to your topic. See the README to switch on custom topics.
+    <p className="status-line">
+      <KeyRound size={16} />
+      <span>
+        <strong>Playing with the house questions.</strong> Add an Anthropic API key to this server to unlock any topic. See the README.
+      </span>
     </p>
   );
 }
@@ -340,10 +367,8 @@ function LoadingOverlay(props: { topic: string; error: TriviaApiError | null; on
       <div className="overlay-card">
         {error ? (
           <>
-            <div className="big-emoji" aria-hidden>
-              😬
-            </div>
-            <h2>Couldn't write the questions</h2>
+            <CircleAlert size={36} strokeWidth={1.5} className="muted" aria-hidden />
+            <h2>We couldn't write your questions</h2>
             <p className="muted">{error.message}</p>
             <div className="stack">
               {error.code !== 'not_configured' && (
@@ -352,7 +377,7 @@ function LoadingOverlay(props: { topic: string; error: TriviaApiError | null; on
                 </button>
               )}
               <button type="button" className="btn" onClick={onOffline}>
-                Play with built-in questions
+                Play the house questions
               </button>
               <button type="button" className="btn btn-ghost" onClick={onCancel}>
                 Back to setup
@@ -361,9 +386,11 @@ function LoadingOverlay(props: { topic: string; error: TriviaApiError | null; on
           </>
         ) : (
           <>
-            <div className="spinner" aria-hidden />
-            <h2>Writing questions about {topic}</h2>
+            <Crest size={56} />
+            <div className="eyebrow gold">Writing your questions</div>
+            <h2>{topic.charAt(0).toUpperCase() + topic.slice(1)}</h2>
             <p className="muted">{LOADING_LINES[line]}</p>
+            <div className="spinner" aria-hidden />
             <button type="button" className="btn btn-ghost" onClick={onCancel}>
               Cancel
             </button>

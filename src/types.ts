@@ -39,6 +39,7 @@ export interface Question {
   answer: string;
   /** Other answers the judge should accept. */
   acceptAlso?: string[];
+  /** May be empty when the hint is purely a 50:50 (`hintRemoves`). */
   hint: string;
   /** Option labels struck out when the hint is used (a 50:50). */
   hintRemoves?: string[];
