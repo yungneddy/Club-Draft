@@ -1,0 +1,15 @@
+{
+  "name": "Club Draft",
+  "short_name": "Club Draft",
+  "description": "Trivia, flags and geography party games for 1-10 players on one phone.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#14111f",
+  "theme_color": "#14111f",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
