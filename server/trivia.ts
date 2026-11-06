@@ -103,6 +103,15 @@ export async function handleTriviaRequest(request: Request, env: NodeJS.ProcessE
       console.error('ANTHROPIC_API_KEY was rejected');
       return errorResponse('not_configured', "Custom topics aren't available right now. The server's API key was rejected.", 503);
     }
+    if (error instanceof Anthropic.BadRequestError || error instanceof Anthropic.PermissionDeniedError) {
+      // Retrying won't help: usually the account behind the key has no credits or no access.
+      console.error('Claude API refused the request', error.status, error.message);
+      return errorResponse(
+        'not_configured',
+        "Claude can't write questions with this server's API key. Check the account's credits and billing at console.anthropic.com.",
+        503,
+      );
+    }
     if (error instanceof Anthropic.RateLimitError) {
       return errorResponse('failed', "It's busy right now. Try again in a moment.", 429);
     }
