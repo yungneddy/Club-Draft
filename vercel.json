@@ -1,5 +1,5 @@
 {
   "functions": {
-    "api/trivia.ts": { "maxDuration": 120 }
+    "api/trivia.ts": { "maxDuration": 60 }
   }
 }

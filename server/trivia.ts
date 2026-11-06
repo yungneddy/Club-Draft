@@ -39,7 +39,7 @@ class TriviaError extends Error {
 
 export async function generateTrivia(req: TriviaRequest, apiKey: string): Promise<TriviaQuestionDTO[]> {
   // The browser retries on failure, so keep a single attempt here and stay inside the function time limit.
-  const client = new Anthropic({ apiKey, timeout: 100_000, maxRetries: 0 });
+  const client = new Anthropic({ apiKey, timeout: 55_000, maxRetries: 0 });
   const response = await client.beta.messages.parse({
     model: MODEL,
     max_tokens: 16000,

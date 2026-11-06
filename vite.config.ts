@@ -10,7 +10,7 @@ function triviaApi(env: NodeJS.ProcessEnv): Plugin {
     for await (const chunk of req) chunks.push(chunk as Buffer);
     const request = new Request(new URL(req.originalUrl ?? '/api/trivia', 'http://localhost'), {
       method: req.method,
-      headers: Object.entries(req.headers).flatMap(([k, v]) => (typeof v === 'string' ? [[k, v]] : [])),
+      headers: Object.entries(req.headers).flatMap(([k, v]): [string, string][] => (typeof v === 'string' ? [[k, v]] : [])),
       body: req.method === 'GET' || req.method === 'HEAD' ? undefined : Buffer.concat(chunks),
     });
     const response = await handleTriviaRequest(request, env);
